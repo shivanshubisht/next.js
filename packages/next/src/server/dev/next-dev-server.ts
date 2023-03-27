@@ -99,6 +99,7 @@ import { logAppDirError } from './log-app-dir-error'
 import { createClientRouterFilter } from '../../lib/create-client-router-filter'
 import { IncrementalCache } from '../lib/incremental-cache'
 import LRUCache from 'next/dist/compiled/lru-cache'
+import { NextUrlWithParsedQuery } from '../request-meta'
 
 // Load ReactDevOverlay only when needed
 let ReactDevOverlayImpl: FunctionComponent
@@ -492,9 +493,10 @@ export default class DevServer extends Server {
           devPageFiles.add(fileName)
 
           const rootFile = absolutePathToPage(fileName, {
-            pagesDir: this.dir,
+            dir: this.dir,
             extensions: this.nextConfig.pageExtensions,
             keepIndex: false,
+            pagesType: 'root',
           })
 
           const staticInfo = await getPageStaticInfo({
@@ -531,9 +533,10 @@ export default class DevServer extends Server {
           }
 
           let pageName = absolutePathToPage(fileName, {
-            pagesDir: isAppPath ? this.appDir! : this.pagesDir!,
+            dir: isAppPath ? this.appDir! : this.pagesDir!,
             extensions: this.nextConfig.pageExtensions,
             keepIndex: isAppPath,
+            pagesType: isAppPath ? 'app' : 'pages',
           })
 
           if (
@@ -551,9 +554,13 @@ export default class DevServer extends Server {
             if (!validFileMatcher.isAppRouterPage(fileName)) {
               continue
             }
+            // Ignore files/directories starting with `_` in the app directory
+            if (normalizePathSep(fileName).includes('/_')) {
+              continue
+            }
 
             const originalPageName = pageName
-            pageName = normalizeAppPath(pageName)
+            pageName = normalizeAppPath(pageName).replace(/%5F/g, '_')
             if (!appPaths[pageName]) {
               appPaths[pageName] = []
             }
@@ -1148,6 +1155,15 @@ export default class DevServer extends Server {
       this.renderError(err, req, res, page)
       return null
     }
+  }
+
+  public async handleRequest(
+    req: BaseNextRequest,
+    res: BaseNextResponse,
+    parsedUrl?: NextUrlWithParsedQuery
+  ): Promise<void> {
+    await this.devReady
+    return await super.handleRequest(req, res, parsedUrl)
   }
 
   async run(

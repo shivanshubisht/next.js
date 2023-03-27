@@ -1,6 +1,6 @@
 use anyhow::Result;
 use indexmap::indexmap;
-use turbo_tasks::Value;
+use turbo_tasks::{primitives::OptionStringVc, Value};
 use turbo_tasks_fs::FileSystemPathVc;
 use turbopack::{
     self,
@@ -69,8 +69,13 @@ impl Transition for NextLayoutEntryTransition {
                 EcmascriptInputTransform::TypeScript {
                     use_define_for_class_fields: false,
                 },
-                EcmascriptInputTransform::React { refresh: false },
+                EcmascriptInputTransform::React {
+                    refresh: false,
+                    import_source: OptionStringVc::cell(None),
+                    runtime: OptionStringVc::cell(None),
+                },
             ]),
+            Default::default(),
             context.compile_time_info(),
             InnerAssetsVc::cell(indexmap! {
                 "PAGE".to_string() => asset
